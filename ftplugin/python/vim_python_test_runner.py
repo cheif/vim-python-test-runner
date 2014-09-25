@@ -1,31 +1,65 @@
 #!/bin/env python
 import re
-from os.path import splitext
+import os
 from xml.etree import ElementTree
+DJANGO_COVERAGE_COMMAND = \
+    'bump /opt/memoto/env/bin/coverage run -a --source="{}" \
+--omit="*migrations*" manage.py test'
 
 
 class TestCase(object):
+    is_django = False
+
     def __init__(self, vim):
         self.vim = vim
         self.buffer = vim.current.buffer
         self.current_line = vim.current.window.cursor[0]
-        manage_py = "/opt/memoto/bump django"
-        self.project_name = "memsite"
-        self.basecommand = manage_py + ' test '
+        full_path = self.buffer.name
+
+        # Nose project?
+        project_dir = self.find_dir_with(full_path, 'setup.py')
+        if project_dir:
+            self.test_cmd = "nosetests"
+        else:
+            # Django project?
+            project_dir = self.find_dir_with(full_path, 'manage.py')
+            if project_dir:
+                self.is_django = True
+                self.test_cmd = "bump django test"
+            else:
+                print "Couldn't determine type"
+                return None
+
+        root_relative_path = full_path.split(project_dir)[-1][1:]
+        without_ext = os.path.splitext(root_relative_path)[0]
+        self.basename = without_ext.replace('/', '.')
+
+        # Should we save coverage?
+        if self.is_django and self.vim.eval('g:test_runner_append_coverage'):
+            self.test_cmd = DJANGO_COVERAGE_COMMAND.format(self.app)
+
+    def find_dir_with(self, path, filename):
+        """Find the directory containing setup.py"""
+        path = os.path.dirname(path)
+
+        while path != '/':
+            if filename in os.listdir(path):
+                return path
+            path, curr = os.path.split(path)
 
     @property
     def app(self):
-        path = self.buffer.name
-        components = path.split('/')
-        app_index = components.index(self.project_name) + 1
-        return components[app_index]
+        if self.is_django:
+            return ".".join(self.basename.split('.')[:2])
+        else:
+            return ''
 
     @property
-    def file(self):
-        path = self.buffer.name
-        app_file = path.split(self.app)[1].lstrip('/')
-        basename = splitext(app_file)[0]
-        return basename.replace('/', '.')
+    def filename(self):
+        if self.is_django:
+            return '.tests' + self.basename.split('tests')[1]
+        else:
+            return self.basename
 
     @property
     def cls(self):
@@ -48,18 +82,22 @@ class TestCase(object):
 
     def get_command(self, abbr):
         if abbr != 'rerun':
-            components = [self.project_name]
-            if abbr != 'project':
-                components.append(self.app)
-                if abbr != 'app':
-                    components.append(self.file)
-                    if abbr != 'file':
-                        components.append(self.cls)
-                        if abbr != 'class':
-                            components.append(self.method)
-            command = self.basecommand + '.'.join(components)
+            command = self._get_command(abbr)
             self.vim.command("let g:last_test_command='{}'".format(command))
         return self.vim.eval('g:last_test_command')
+
+    def _get_command(self, abbr):
+        cmd = self.test_cmd
+        if abbr != 'project':
+            cmd += ' ' + self.app
+            if abbr != 'app':
+                cmd += self.filename
+                if abbr != 'file':
+                    delim = '.' if self.is_django else ':'
+                    cmd += delim + self.cls
+                    if abbr != 'class':
+                        cmd += "." + self.method
+        return cmd
 
 
 def ShowTestResults(vim, file):

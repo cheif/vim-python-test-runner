@@ -42,6 +42,7 @@ endfunction
 
 command! DjangoTestApp call RunDesiredTests("app")
 command! DjangoTestClass call RunDesiredTests("class")
+command! DjangoTestFile call RunDesiredTests("file")
 command! DjangoTestMethod call RunDesiredTests("method")
 command! DjangoTestProject call RunDesiredTests("project")
 command! DjangoTestRerun call RunDesiredTests("rerun")
@@ -49,6 +50,7 @@ command! ShowTestResults call ShowTestResults()
 
 nnoremap <Leader>t :DjangoTestMethod<cr>
 nnoremap <Leader>c :DjangoTestClass<cr>
+nnoremap <Leader>f :DjangoTestFile<cr>
 nnoremap <Leader>a :DjangoTestApp<cr>
 nnoremap <Leader>* :DjangoTestProject<cr>
 nnoremap <Leader>r :DjangoTestRerun<cr>
