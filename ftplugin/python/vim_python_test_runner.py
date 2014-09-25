@@ -1,6 +1,7 @@
 #!/bin/env python
 import re
 import os
+import coverage
 from xml.etree import ElementTree
 DJANGO_COVERAGE_COMMAND = \
     'bump /opt/memoto/env/bin/coverage run -a --source="{}" \
@@ -98,6 +99,19 @@ class TestCase(object):
                     if abbr != 'class':
                         cmd += "." + self.method
         return cmd
+
+
+def ShowCoverage(vim):
+    vim.command("highlight link TestMisses error")
+    vim.command("sign define test_misses text=>> texthl=TestMisses")
+    # Read coverage data
+    c = coverage.coverage()
+    c.data.read()
+    for b in vim.buffers:
+        missed_lines = c.analysis(b.name)[2]
+        for line in missed_lines:
+            vim.command("sign place {} line={} name=test_misses file={}"
+                        .format(line, line, b.name))
 
 
 def ShowTestResults(vim, file):

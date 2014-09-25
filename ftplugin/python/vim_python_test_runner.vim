@@ -5,6 +5,9 @@ if !has('python')
     finish
 endif
 
+" Show testresults after changing buffer
+autocmd BufEnter * call ShowTestResultsAndCoverage()
+
 " -----------------------------
 " Add our directory to the path
 " -----------------------------
@@ -33,9 +36,11 @@ main()
 endPython
 endfunction
 
-function! ShowTestResults()
+function! ShowTestResultsAndCoverage()
 python << endPython
+from vim_python_test_runner import ShowCoverage
 from vim_python_test_runner import ShowTestResults
+ShowCoverage(vim)
 ShowTestResults(vim, '/tmp/nosetests.xml')
 endPython
 endfunction
@@ -46,7 +51,6 @@ command! DjangoTestFile call RunDesiredTests("file")
 command! DjangoTestMethod call RunDesiredTests("method")
 command! DjangoTestProject call RunDesiredTests("project")
 command! DjangoTestRerun call RunDesiredTests("rerun")
-command! ShowTestResults call ShowTestResults()
 
 nnoremap <Leader>t :DjangoTestMethod<cr>
 nnoremap <Leader>c :DjangoTestClass<cr>
@@ -54,5 +58,3 @@ nnoremap <Leader>f :DjangoTestFile<cr>
 nnoremap <Leader>a :DjangoTestApp<cr>
 nnoremap <Leader>* :DjangoTestProject<cr>
 nnoremap <Leader>r :DjangoTestRerun<cr>
-
-nnoremap <Leader>s :ShowTestResults<cr>
