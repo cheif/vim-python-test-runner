@@ -4,8 +4,7 @@ import os
 import coverage
 from xml.etree import ElementTree
 DJANGO_COVERAGE_COMMAND = \
-    'bump /opt/memoto/env/bin/coverage run -a --source="{}" \
---omit="*migrations*" manage.py test'
+    'bump /opt/memoto/env/bin/coverage run -a manage.py test'
 
 
 class TestCase(object):
@@ -18,20 +17,20 @@ class TestCase(object):
         full_path = self.buffer.name
 
         # Nose project?
-        project_dir = self.find_dir_with(full_path, 'setup.py')
-        if project_dir:
+        self.project_dir = self.find_dir_with(full_path, 'setup.py')
+        if self.project_dir:
             self.test_cmd = "nosetests"
         else:
             # Django project?
-            project_dir = self.find_dir_with(full_path, 'manage.py')
-            if project_dir:
+            self.project_dir = self.find_dir_with(full_path, 'manage.py')
+            if self.project_dir:
                 self.is_django = True
                 self.test_cmd = "bump django test"
             else:
                 print "Couldn't determine type"
                 return None
 
-        root_relative_path = full_path.split(project_dir)[-1][1:]
+        root_relative_path = full_path.split(self.project_dir)[-1][1:]
         without_ext = os.path.splitext(root_relative_path)[0]
         self.basename = without_ext.replace('/', '.')
 
@@ -100,17 +99,27 @@ class TestCase(object):
                         cmd += "." + self.method
         return cmd
 
-
-def ShowCoverage(vim):
-    vim.command("highlight link TestMisses error")
-    vim.command("sign define test_misses text=>> texthl=TestMisses")
-    # Read coverage data
-    c = coverage.coverage()
-    c.data.read()
-    for b in vim.buffers:
-        missed_lines = c.analysis(b.name)[2]
-        for line in missed_lines:
-            vim.command("sign place {} line={} name=test_misses file={}"
+    def show_coverage(self):
+        """Show the coverage, if present"""
+        self.vim.command("highlight TestMisses ctermbg=Yellow ctermfg=Black")
+        self.vim.command("sign define test_misses text=NC texthl=TestMisses")
+        # Read coverage data
+        coverage_path = os.path.join(self.project_dir, '.coverage')
+        print coverage_path
+        c = coverage.coverage(coverage_path)
+        c.data.read()
+        for b in self.vim.buffers:
+            tested_lines, _, missed_lines, missed_ranges = c.analysis(b.name)
+            # If we have missed all files, this isn't worth to show
+            if tested_lines != missed_lines:
+                # We want to use missed_ranges to include nop-lines etc.
+                missed = []
+                for r in missed_ranges.split(', '):
+                    start, end = [int(i) for i in r.split('-')]
+                    missed += list(range(start, end+1))
+                for line in missed:
+                    self.vim.command(
+                        "sign place {} line={} name=test_misses file={}"
                         .format(line, line, b.name))
 
 

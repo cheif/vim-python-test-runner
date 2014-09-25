@@ -38,9 +38,10 @@ endfunction
 
 function! ShowTestResultsAndCoverage()
 python << endPython
-from vim_python_test_runner import ShowCoverage
+from vim_python_test_runner import TestCase
 from vim_python_test_runner import ShowTestResults
-ShowCoverage(vim)
+case = TestCase(vim)
+case.show_coverage()
 ShowTestResults(vim, '/tmp/nosetests.xml')
 endPython
 endfunction
